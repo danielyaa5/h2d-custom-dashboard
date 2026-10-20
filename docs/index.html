@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How I connected my H2D to a Smart Life exhaust fan · Daniel Yakobian</title>
+<meta name="description" content="Connecting a Bambu Lab H2D status feed to a Smart Life exhaust fan, with warm-up handling, a post-print purge and a small Python dashboard.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+</head><body>
+<a class="skip" href="#story">Skip to story</a>
+<div class="page"><header class="masthead"><a href="#" class="name">Daniel Yakobian<span>Build notes</span></a><nav aria-label="Links"><a href="https://github.com/danielyaa5/h2d-custom-dashboard/blob/main/SETUP.md">Setup</a><a href="https://github.com/danielyaa5/h2d-custom-dashboard">Source ↗</a></nav></header>
+<main id="story"><header class="post-header"><p class="eyebrow">3D PRINTING / A SMALL AUTOMATION PROJECT</p><h1>How I connected my H2D to a Smart Life exhaust fan</h1><p class="byline">By Daniel Yakobian <span>·</span> October 20, 2026</p></header>
+<article>
+<p>I wanted to connect my Bambu Lab H2D to a window exhaust and have an external fan follow the print. But the main question came before the automation: with the printer&#x27;s exhaust closed during printing, would the external fan still pull air from inside the printer?</p>
+<p>The result is a small Python service on a Mac, a connection to the printer&#x27;s local status feed, and a web dashboard.</p>
+<h2 id="would-it-pull-air-with-the-exhaust-closed">Would it pull air with the exhaust closed?</h2>
+<p>This was the main issue I was trying to figure out. The H2D&#x27;s exhaust flap was closed during printing, and I wasn&#x27;t sure whether an inline fan connected to the rear exhaust could still draw air out of the printer in that state.</p>
+<p>In my setup, the answer was yes. The external fan still pulled air from the printer while it was printing, even with the exhaust flap closed. That was the finding that made running the external fan during a print useful, instead of only using it for a purge afterward.</p>
+<p>Getting there involved checking how the printer&#x27;s vents behaved. I tested the H2D&#x27;s cooling and heating modes and the Filter switch. The top vent and rear flap moved together with the printer&#x27;s exhaust setting, and the Filter switch didn&#x27;t give me an independent way to leave the rear open and the top closed.</p>
+<p>The practical answer was that I didn&#x27;t need the rear flap held open for the external fan to pull air during printing. I haven&#x27;t measured the airflow rate or room air quality, so this confirms that air is being drawn out in my setup, not how much.</p>
+<p>Once that question was settled, the next job was making the fan follow the printer: let the chamber warm up, run the fan during the print, then keep it going for a purge at the end. I also wanted to change its speed without digging through the Smart Life app.</p>
+<h2 id="printing-the-exhaust-adapter">Printing the exhaust adapter</h2>
+<p>For the printer end of the duct, I used <a href="https://www.printables.com/model/1517742-bambu-lab-h2-series-4-inch-exhaust-duct-adapter-h2">Robert G&#x27;s H2-series 4-inch exhaust adapter on Printables</a>. It connects the rear exhaust port to a standard 4-inch duct, with the outlet facing either left or right. The download also includes a version sized for an optional TPU gasket.</p>
+<div class="hardware-pair"><figure><img src="hardware/exhaust-adapter-render.png" alt="Duct opening of Robert G&#x27;s H2-series exhaust adapter, shown as a model render" loading="lazy"></figure><figure><img src="hardware/exhaust-adapter-back.png" alt="Rear and mounting flange of the exhaust adapter, shown as a model render" loading="lazy"></figure></div>
+<p><em>Two views of the adapter model, not photographs of my installation. Design by Robert G, shared as public domain on Printables. The red is just the render color.</em></p>
+<p>The designer recommends PETG and organic supports. I printed mine on the H2D in Creality Hyper ABS, using HIPS only for the support layers that touch the part. ABS ran through the right nozzle and HIPS through the left, so the bulk of the supports could stay ABS.</p>
+<p>The print finished on October 13 after 8 hours and 28 minutes, including the end routine. The supports came off very easily, but the supported underside was rough with a 0.2 mm top support gap. My next adjustment is to try 0.1 mm; I haven&#x27;t verified that change yet.</p>
+<h2 id="a-window-kit-for-the-other-end">A window kit for the other end</h2>
+<p>For the window end, I bought this <a href="https://www.amazon.com/dp/B0GVPBDBRT">LEZIFU adjustable window vent kit from Amazon</a>. The listing covers 4-, 5-, and 6-inch ducting and describes a 17–60-inch range for sliding windows. The 4-inch option matches the nominal size of the printer adapter and inline fan.</p>
+<figure class="window-kit"><img src="hardware/window-vent-kit.jpg" alt="LEZIFU window vent kit with sliding panels, duct couplers, sealing tape and fasteners" loading="lazy"></figure>
+<p><em>Product photo from the Amazon listing for the kit I purchased. This shows the supplied parts, not my installed window.</em></p>
+<p>The kit provides adjustable panels for the window opening and a duct connection through one panel. That gave me a ready-made window outlet to pair with the printed printer adapter, rather than making a custom window panel as well. Those parts define the exhaust route; they don&#x27;t establish how much air the finished setup moves.</p>
+<h2 id="an-old-mac-became-the-bridge">An old Mac became the bridge</h2>
+<p>I already had a Mac running as a home server, so I used it to connect the two systems.</p>
+<p>The H2D publishes status through its local MQTT connection. My Python listener reads that feed, keeps track of the current job and temperatures, and decides when the external fan should run. A separate adapter sends the fan commands through Smart Life&#x27;s Tuya service.</p>
+<figure><img src="connection.svg" alt="Connection from printer status to exhaust-fan control" loading="lazy"></figure>
+<p>The printer connection stays on the local network. The Smart Life side uses the cloud, so it still depends on that service and the internet connection.</p>
+<p>For the fan sign-in, I used Tuya&#x27;s SDK and its QR-code flow. The adapter finds the fan&#x27;s on/off and speed controls rather than assuming every Smart Life device uses the same settings. The account tokens stay in local configuration files.</p>
+<h2 id="the-warm-up-delay-was-worth-adding">The warm-up delay was worth adding</h2>
+<p>The first version focused on ABS and ASA. I tried different speeds, then settled on strength 5 and added PETG to the list.</p>
+<p>I also changed when the fan starts. Turning it on as soon as a job appears can work against heating the chamber. The listener now waits until the printer is actually printing or the chamber has reached a nonzero target temperature.</p>
+<p>A target of zero doesn&#x27;t count as “warmed up.” That small check matters when a status update arrives without an active chamber target.</p>
+<h2 id="the-purge-and-the-phone-notification">The purge and the phone notification</h2>
+<p>I wanted a stronger purge at the end, so the external fan now runs at strength 10 for a 15-minute purge. The listener recognizes the printer&#x27;s air-purification stage as well as the job ending.</p>
+<p>I also added printer-side end G-code for a purge. That&#x27;s a separate part of my setup. This repository&#x27;s Python service requests status from the H2D; it doesn&#x27;t send printer fan commands, move the toolhead or change temperatures.</p>
+<p>At one point I thought the fans hadn&#x27;t gone to full speed because they were off when the “print finished” notification reached my phone. Looking at the logs showed that the purge had already run before the notification arrived. The alert was a poor reference point for checking when the purge started.</p>
+<h2 id="then-i-wanted-a-dashboard">Then I wanted a dashboard</h2>
+<p>Once the automation was running, I wanted to see what it was doing and override it when needed.</p>
+<p>The dashboard shows the current job, progress, remaining time, chamber temperature, bed temperature and both nozzle temperatures. Alongside that are the external fan&#x27;s state and speed, manual controls, timed purges and a return-to-auto button.</p>
+<figure><img src="screenshots/dashboard.png" alt="H2D dashboard with simulated printer data" loading="lazy"></figure>
+<p><em>The screenshots use the built-in demo with fictional job names and temperatures.</em></p>
+<p>I can also change the fan strength, trigger materials and purge duration from the page. Those settings survive a restart. The printer-fan percentages shown in the settings panel are stored values; they don&#x27;t make the Python listener send commands to the printer.</p>
+<p>On a phone, the same page stacks into a single column.</p>
+<figure class="mobile-shot"><img src="screenshots/mobile.png" width="300" alt="Phone layout of the H2D dashboard using simulated data"></figure>
+<h2 id="making-it-survive-ordinary-failures">Making it survive ordinary failures</h2>
+<p>I didn&#x27;t want a dropped connection or a restarted process to lose track of the fan. The service reconnects to the printer, preserves its tracked fan job and purge state, and retries failed fan commands.</p>
+<p>It also writes daily CSV logs. Those were useful when I needed to compare the print stages, fan activity and notification timing.</p>
+<p>The test suite uses a fake TLS printer and temporary files. Its 39 tests cover MQTT handling, partial updates, reconnects, logging, web routes and fan behavior without using the real printer credentials.</p>
+<h2 id="try-it-without-connecting-anything">Try it without connecting anything</h2>
+<p>The repository includes a demo that runs entirely on fictional data:</p>
+<pre><code>python3 scripts/demo.py</code></pre>
+<p>Open http://localhost:8792. The demo&#x27;s buttons change simulated state only.</p>
+<p>For the real setup, see <a href="https://github.com/danielyaa5/h2d-custom-dashboard/blob/main/SETUP.md">the installation instructions</a> and <a href="https://github.com/danielyaa5/h2d-custom-dashboard">the source code</a>.</p>
+<p>The dashboard has no login and its fan controls can operate real hardware. I keep it on my trusted home network rather than publishing the control panel on the internet. This page is the build story, not access to my printer.</p></article></main>
+<footer><span>H2D Custom Dashboard</span><a href="https://github.com/danielyaa5/h2d-custom-dashboard">View the project on GitHub ↗</a></footer></div>
+</body></html>

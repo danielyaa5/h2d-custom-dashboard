@@ -1,119 +1,109 @@
-# H2D Custom Dashboard
+# How I connected my H2D to a Smart Life exhaust fan
 
-A local web dashboard and MQTT status logger for the **Bambu Lab H2D**, with optional Smart Life exhaust-fan control. See printer progress, temperatures, filament types and fan status from a browser on your home network.
+*Daniel Yakobian · October 20, 2026*
+
+I wanted to connect my Bambu Lab H2D to a window exhaust and have an external fan follow the print. But the main question came before the automation: with the printer's exhaust closed during printing, would the external fan still pull air from inside the printer?
+
+The result is a small Python service on a Mac, a connection to the printer's local status feed, and a web dashboard.
+
+## Would it pull air with the exhaust closed?
+
+This was the main issue I was trying to figure out. The H2D's exhaust flap was closed during printing, and I wasn't sure whether an inline fan connected to the rear exhaust could still draw air out of the printer in that state.
+
+In my setup, the answer was yes. The external fan still pulled air from the printer while it was printing, even with the exhaust flap closed. That was the finding that made running the external fan during a print useful, instead of only using it for a purge afterward.
+
+Getting there involved checking how the printer's vents behaved. I tested the H2D's cooling and heating modes and the Filter switch. The top vent and rear flap moved together with the printer's exhaust setting, and the Filter switch didn't give me an independent way to leave the rear open and the top closed.
+
+The practical answer was that I didn't need the rear flap held open for the external fan to pull air during printing. I haven't measured the airflow rate or room air quality, so this confirms that air is being drawn out in my setup, not how much.
+
+Once that question was settled, the next job was making the fan follow the printer: let the chamber warm up, run the fan during the print, then keep it going for a purge at the end. I also wanted to change its speed without digging through the Smart Life app.
+
+## Printing the exhaust adapter
+
+For the printer end of the duct, I used [Robert G's H2-series 4-inch exhaust adapter on Printables](https://www.printables.com/model/1517742-bambu-lab-h2-series-4-inch-exhaust-duct-adapter-h2). It connects the rear exhaust port to a standard 4-inch duct, with the outlet facing either left or right. The download also includes a version sized for an optional TPU gasket.
+
+![Duct opening of Robert G's H2-series exhaust adapter, shown as a model render](docs/hardware/exhaust-adapter-render.png)
+
+![Rear and mounting flange of the exhaust adapter, shown as a model render](docs/hardware/exhaust-adapter-back.png)
+
+*Two views of the adapter model, not photographs of my installation. Design by Robert G, shared as public domain on Printables. The red is just the render color.*
+
+The designer recommends PETG and organic supports. I printed mine on the H2D in Creality Hyper ABS, using HIPS only for the support layers that touch the part. ABS ran through the right nozzle and HIPS through the left, so the bulk of the supports could stay ABS.
+
+The print finished on October 13 after 8 hours and 28 minutes, including the end routine. The supports came off very easily, but the supported underside was rough with a 0.2 mm top support gap. My next adjustment is to try 0.1 mm; I haven't verified that change yet.
+
+## A window kit for the other end
+
+For the window end, I bought this [LEZIFU adjustable window vent kit from Amazon](https://www.amazon.com/dp/B0GVPBDBRT). The listing covers 4-, 5-, and 6-inch ducting and describes a 17–60-inch range for sliding windows. The 4-inch option matches the nominal size of the printer adapter and inline fan.
+
+![LEZIFU window vent kit with sliding panels, duct couplers, sealing tape and fasteners](docs/hardware/window-vent-kit.jpg)
+
+*Product photo from the Amazon listing for the kit I purchased. This shows the supplied parts, not my installed window.*
+
+The kit provides adjustable panels for the window opening and a duct connection through one panel. That gave me a ready-made window outlet to pair with the printed printer adapter, rather than making a custom window panel as well. Those parts define the exhaust route; they don't establish how much air the finished setup moves.
+
+## An old Mac became the bridge
+
+I already had a Mac running as a home server, so I used it to connect the two systems.
+
+The H2D publishes status through its local MQTT connection. My Python listener reads that feed, keeps track of the current job and temperatures, and decides when the external fan should run. A separate adapter sends the fan commands through Smart Life's Tuya service.
+
+![Connection from printer status to exhaust-fan control](docs/connection.svg)
+
+The printer connection stays on the local network. The Smart Life side uses the cloud, so it still depends on that service and the internet connection.
+
+For the fan sign-in, I used Tuya's SDK and its QR-code flow. The adapter finds the fan's on/off and speed controls rather than assuming every Smart Life device uses the same settings. The account tokens stay in local configuration files.
+
+## The warm-up delay was worth adding
+
+The first version focused on ABS and ASA. I tried different speeds, then settled on strength 5 and added PETG to the list.
+
+I also changed when the fan starts. Turning it on as soon as a job appears can work against heating the chamber. The listener now waits until the printer is actually printing or the chamber has reached a nonzero target temperature.
+
+A target of zero doesn't count as “warmed up.” That small check matters when a status update arrives without an active chamber target.
+
+## The purge and the phone notification
+
+I wanted a stronger purge at the end, so the external fan now runs at strength 10 for a 15-minute purge. The listener recognizes the printer's air-purification stage as well as the job ending.
+
+I also added printer-side end G-code for a purge. That's a separate part of my setup. This repository's Python service requests status from the H2D; it doesn't send printer fan commands, move the toolhead or change temperatures.
+
+At one point I thought the fans hadn't gone to full speed because they were off when the “print finished” notification reached my phone. Looking at the logs showed that the purge had already run before the notification arrived. The alert was a poor reference point for checking when the purge started.
+
+## Then I wanted a dashboard
+
+Once the automation was running, I wanted to see what it was doing and override it when needed.
+
+The dashboard shows the current job, progress, remaining time, chamber temperature, bed temperature and both nozzle temperatures. Alongside that are the external fan's state and speed, manual controls, timed purges and a return-to-auto button.
 
 ![H2D dashboard with simulated printer data](docs/screenshots/dashboard.png)
 
-## Features
+*The screenshots use the built-in demo with fictional job names and temperatures.*
 
-- Live chamber, bed and both nozzle temperatures, plus print progress, layers and remaining time.
-- Daily CSV logs with automatic retention of the most recent 31 days.
-- Optional Smart Life fan automation for ABS, ASA and PETG, including warm-up handling and a post-print purge.
-- Manual fan speed controls, timed overrides and persistent exhaust settings.
-- Responsive layout and a simple browser-tab icon.
-- Optional macOS Dock launcher and a separate Windows status logger.
+I can also change the fan strength, trigger materials and purge duration from the page. Those settings survive a restart. The printer-fan percentages shown in the settings panel are stored values; they don't make the Python listener send commands to the printer.
 
-<img src="docs/screenshots/mobile.png" width="300" alt="H2D dashboard on a phone, using simulated data">
+On a phone, the same page stacks into a single column.
 
-Both screenshots use the built-in demo, with fictional job names and temperatures.
+<img src="docs/screenshots/mobile.png" width="300" alt="Phone layout of the H2D dashboard using simulated data">
 
-## Try the demo
+## Making it survive ordinary failures
 
-Requires Python 3.9 or later. The demo needs no printer, credentials or extra packages, and never connects to hardware:
+I didn't want a dropped connection or a restarted process to lose track of the fan. The service reconnects to the printer, preserves its tracked fan job and purge state, and retries failed fan commands.
+
+It also writes daily CSV logs. Those were useful when I needed to compare the print stages, fan activity and notification timing.
+
+The test suite uses a fake TLS printer and temporary files. Its 39 tests cover MQTT handling, partial updates, reconnects, logging, web routes and fan behavior without using the real printer credentials.
+
+## Try it without connecting anything
+
+The repository includes a demo that runs entirely on fictional data:
 
 ```sh
 python3 scripts/demo.py
 ```
 
-Open [http://localhost:8792](http://localhost:8792). Demo controls change simulated state only; nothing is sent to a printer or fan.
+Open http://localhost:8792. The demo's buttons change simulated state only.
 
-## Connect your printer
+For the real setup, see [the installation instructions](SETUP.md) and [the source code](https://github.com/danielyaa5/h2d-custom-dashboard).
 
-The printer must be reachable over its local MQTT TLS port (8883), with a serial number and LAN access code available in its settings. This has been used with an H2D while cloud mode remained enabled; behavior may depend on firmware and network configuration.
-
-```sh
-cp config.example.json air/config.json
-# Edit air/config.json with your printer hostname, serial and LAN access code.
-python3 air/h2d_logger.py
-```
-
-Open [http://localhost:8791](http://localhost:8791) on the host, or the host's address and port 8791 from another device on your LAN. Keep the host awake while logging. Stop the foreground process with Control-C.
-
-The logger subscribes to status reports and requests a full status snapshot after connecting. It does not send print jobs, move the printer or change its temperatures. It reconnects after a dropped connection. Logs are written to `air/logs/`; the server exposes dated CSV downloads, not the project folder or configuration files.
-
-**Access:** the dashboard listens on all network interfaces without a login, and its optional fan controls can operate a real fan. Use it on a trusted network. Do not expose port 8791 to the public internet. MQTT uses TLS but accepts the printer's self-signed certificate without certificate verification.
-
-### Optional Smart Life fan
-
-The logger and dashboard need only the Python standard library. Smart Life support uses Tuya's SDK in a separate environment:
-
-```sh
-python3 -m venv air/fan-venv
-air/fan-venv/bin/pip install tuya-device-sharing-sdk cryptography
-air/fan-venv/bin/python air/fan.py login YOUR_SMART_LIFE_USER_CODE
-air/fan-venv/bin/python air/fan.py devices
-air/fan-venv/bin/python air/fan.py use YOUR_FAN_DEVICE_ID
-```
-
-Find the user code in Smart Life under **Me → Settings → Account and Security → User Code**. Follow the QR sign-in instructions. Credentials stay in ignored configuration files; never commit them. Restart the logger after setting up the fan.
-
-By default, the fan runs at speed 5 for ABS, ASA and PETG once warm-up finishes. It runs at speed 10 during the post-print purge for 15 minutes. The dashboard can change these settings and apply manual or timed overrides. The logger preserves the tracked fan job across restarts and retries failed fan commands.
-
-The printer-fan percentages shown in the settings panel are stored settings. This logger does **not** send fan-control commands to the printer or install end-of-print G-code; configure printer-side behavior separately if needed.
-
-### Background service on macOS
-
-Copy `air/h2d-status-logger.plist.example` to `~/Library/LaunchAgents/local.h2d-status-logger.plist`. Replace the Python, source and log paths with absolute paths on your machine, then load it:
-
-```sh
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.h2d-status-logger.plist
-```
-
-The example starts at login and restarts on failure. It runs only while that user is logged in. To stop it:
-
-```sh
-launchctl bootout gui/$(id -u)/local.h2d-status-logger
-```
-
-### Optional macOS Dock launcher
-
-Edit `dashboardUrl` in `dock-launcher/launcher.applescript` if the server runs on another machine, then run:
-
-```sh
-bash dock-launcher/build.sh
-```
-
-This compiles and installs `/Applications/H2D Dashboard.app`. The launcher activates an existing matching Google Chrome tab, or opens the dashboard. macOS may ask for permission to control Chrome and System Events. The launcher uses the artwork under `assets/`; its build folder is ignored by Git.
-
-### Windows logger
-
-The Windows logger is separate from the Python web dashboard. Copy `config.example.json` to `config.json` in the project root, fill in the printer details, then run in Windows PowerShell:
-
-```powershell
-.\h2d-log.ps1 -Minutes 120 -EverySeconds 10
-```
-
-It writes `status-log.csv` and `status-latest.json` locally. These runtime files are ignored by Git. Windows logging does not include the web dashboard or Smart Life control.
-
-## Verification
-
-```sh
-python3 air/test_h2d_logger.py
-# Optional, slower mutation checks; requires zsh and sed:
-zsh air/mutation_check.sh
-```
-
-The 39 tests use temporary files and a fake TLS printer on localhost. They cover MQTT packet handling, reconnects, partial status updates, retention, HTTP routes, settings and fan automation. The real printer credentials and devices are not used. OpenSSL must be available for the fake printer certificate.
-
-## Project layout
-
-| Path | Purpose |
-| --- | --- |
-| `air/h2d_logger.py` | MQTT logger, web dashboard and fan coordination |
-| `air/fan.py` | Optional Smart Life adapter |
-| `scripts/demo.py` | Hardware-free demo for previews and screenshots |
-| `dock-launcher/` | macOS launcher source and build script |
-| `assets/` | Dock artwork and tab icons |
-| `H2DStatus.cs`, `h2d-log.ps1` | Windows logger |
-
-Configuration, access codes, Smart Life tokens, local logs and build products are excluded from the public source.
+The dashboard has no login and its fan controls can operate real hardware. I keep it on my trusted home network rather than publishing the control panel on the internet. This page is the build story, not access to my printer.
