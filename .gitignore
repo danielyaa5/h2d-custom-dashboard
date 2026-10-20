@@ -1,0 +1,33 @@
+# Private printer and fan configuration
+config.json
+**/config.json
+fan.json
+**/fan.json
+fan-tokens.json
+**/fan-tokens.json
+fan-state.json
+**/fan-state.json
+fan-settings.json
+**/fan-settings.json
+.env
+.env.*
+!.env.example
+
+# Runtime output and local builds
+logs/
+*.log
+__pycache__/
+*.pyc
+.venv*/
+venv/
+fan-venv/
+node_modules/
+dock-launcher/build/
+.DS_Store
+
+# Private deployment and historical runtime snapshots
+status-latest.json
+status-log.csv
+*.plist
+*.before-*
+*.bak*
