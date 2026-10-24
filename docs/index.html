@@ -2,10 +2,48 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>How I connected my H2D to a Smart Life exhaust fan · Daniel Yakobian</title>
 <meta name="description" content="Connecting a Bambu Lab H2D status feed to a Smart Life exhaust fan, with warm-up handling, a post-print purge and a small Python dashboard.">
-<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://danielyaa5.github.io/h2d-custom-dashboard/">
+<meta name="author" content="Daniel Yakobian">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How I connected my H2D to a Smart Life exhaust fan">
+<meta property="og:description" content="Connecting a Bambu Lab H2D status feed to a Smart Life exhaust fan, with warm-up handling, a post-print purge and a small Python dashboard.">
+<meta property="og:url" content="https://danielyaa5.github.io/h2d-custom-dashboard/">
+<meta property="og:image" content="https://danielyaa5.github.io/h2d-custom-dashboard/screenshots/dashboard.png">
+<meta property="article:published_time" content="2026-10-20">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "How I connected my H2D to a Smart Life exhaust fan",
+    "description": "Connecting a Bambu Lab H2D status feed to a Smart Life exhaust fan, with warm-up handling, a post-print purge and a small Python dashboard.",
+    "url": "https://danielyaa5.github.io/h2d-custom-dashboard/",
+    "mainEntityOfPage": "https://danielyaa5.github.io/h2d-custom-dashboard/",
+    "image": "https://danielyaa5.github.io/h2d-custom-dashboard/screenshots/dashboard.png",
+    "datePublished": "2026-10-20",
+    "inLanguage": "en",
+    "author": {
+      "@type": "Person",
+      "name": "Daniel Yakobian",
+      "url": "https://danielyakobian.com/"
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "Daniel Yakobian",
+      "url": "https://danielyakobian.com/"
+    },
+    "about": {
+      "@type": "SoftwareSourceCode",
+      "name": "H2D Custom Dashboard",
+      "codeRepository": "https://github.com/danielyaa5/h2d-custom-dashboard"
+    }
+  }
+</script>
+<link rel="stylesheet" href="style.css">
 </head><body>
 <a class="skip" href="#story">Skip to story</a>
-<div class="page"><header class="masthead"><a href="#" class="name">Daniel Yakobian<span>Build notes</span></a><nav aria-label="Links"><a href="https://github.com/danielyaa5/h2d-custom-dashboard/blob/main/SETUP.md">Setup</a><a href="https://github.com/danielyaa5/h2d-custom-dashboard">Source ↗</a></nav></header>
+<div class="page"><header class="masthead"><a href="https://danielyakobian.com/" class="name">Daniel Yakobian<span>Build notes</span></a><nav aria-label="Links"><a href="https://github.com/danielyaa5/h2d-custom-dashboard/blob/main/SETUP.md">Setup</a><a href="https://github.com/danielyaa5/h2d-custom-dashboard">Source ↗</a></nav></header>
 <main id="story"><header class="post-header"><p class="eyebrow">3D PRINTING / A SMALL AUTOMATION PROJECT</p><h1>How I connected my H2D to a Smart Life exhaust fan</h1><p class="byline">By Daniel Yakobian <span>·</span> October 20, 2026</p></header>
 <article>
 <p>I wanted to connect my Bambu Lab H2D to a window exhaust and have an external fan follow the print. But the main question came before the automation: with the printer&#x27;s exhaust closed during printing, would the external fan still pull air from inside the printer?</p>
