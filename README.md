@@ -107,3 +107,7 @@ Open http://localhost:8792. The demo's buttons change simulated state only.
 For the real setup, see [the installation instructions](SETUP.md) and [the source code](https://github.com/danielyaa5/h2d-custom-dashboard).
 
 The dashboard has no login and its fan controls can operate real hardware. I keep it on my trusted home network rather than publishing the control panel on the internet. This page is the build story, not access to my printer.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
